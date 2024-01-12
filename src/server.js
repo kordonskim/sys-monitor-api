@@ -84,13 +84,13 @@ function buildResources(callback) {
             resObject.cpu_average = info;
             next();
         })
-        // .then(function (next) {
-        //     drive.info()
-        //         .then(status => {
-        //             resObject.drive = status;
-        //             next();
-        //         })
-        // })
+        .then(function (next) {
+            drive.info()
+                .then(status => {
+                    resObject.drive = status;
+                    next();
+                })
+        })
         .then(function (next) {
             mem.info()
                 .then(status => {
@@ -162,7 +162,8 @@ function buildResources(callback) {
             }
         })
         .then(function(next) {
-            resObject.os_uptime = os.uptime();
+            var days = os.uptime() / 86400;
+            resObject.os_uptime =  days.toFixed(2);
             next();
         })
         .then(function(next) {
