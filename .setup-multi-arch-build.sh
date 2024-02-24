@@ -18,7 +18,7 @@ docker push kordonskim/sys-monitor-api:amd64
 # Setup multi-architecture docker..
 docker manifest create --amend kordonskim/sys-monitor-api kordonskim/sys-monitor-api:arm32v6 kordonskim/sys-monitor-api:arm64v8 kordonskim/sys-monitor-api:amd64
 
-docker manifest push kordonskim/ha-monitor-api:latest
+docker manifest push kordonskim/sys-monitor-api:latest
 
 
 
