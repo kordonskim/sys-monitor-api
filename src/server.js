@@ -7,6 +7,9 @@ var Sequence = exports.Sequence || require('sequence').Sequence, sequence = Sequ
 var app = express();
 
 var LISTEN_PORT = process.env.LISTEN_PORT || 7777;
+var THERMAL_ZONE = process.env.THERMAL_ZONE || "/sys/class/thermal/thermal_zone0/temp";
+
+console.log("THERMAL_ZONE: " + THERMAL_ZONE);
 
 app.listen(LISTEN_PORT, () => {
     console.log("Server running on port " + LISTEN_PORT);
@@ -40,7 +43,7 @@ function buildResources(callback) {
         })       
         .then(function (next) {
             try {
-                require('fs').readFile("/sys/class/thermal/thermal_zone0/temp", "utf8", function(err, data){
+                require('fs').readFile(THERMAL_ZONE, "utf8", function(err, data){
                     if(data !== undefined) {
                         var temperature = parseInt(data.replace(/\D/g,''));
                         temperature = Math.round((temperature * 0.001) * 100) / 100;
