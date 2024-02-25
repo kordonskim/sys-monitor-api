@@ -1,12 +1,14 @@
 // A lightweight API that exposes the system's current performance (such as disk, network, cpu/temperature etc)
 
 const removeTrailingSpaces = require("remove-trailing-spaces");
-var osu = require('node-os-utils')
+var osu = require('node-os-utils');
+var os1 = require('os');
+var fs = require('fs');
 var express = require("express");
 var Sequence = exports.Sequence || require('sequence').Sequence, sequence = Sequence.create(), err;
 var app = express();
 
-var LISTEN_PORT = process.env.LISTEN_PORT || 7777;
+var LISTEN_PORT = process.env.LISTEN_PORT || 7778;
 var THERMAL_ZONE = process.env.THERMAL_ZONE || "/sys/class/thermal/thermal_zone0/temp";
 
 console.log("THERMAL_ZONE: " + THERMAL_ZONE);
@@ -33,7 +35,7 @@ function buildResources(callback) {
     var mem = osu.mem;
     var netstat = osu.netstat;
     var os = osu.os;
-
+    
     var resObject = {};
     
     sequence
@@ -83,8 +85,38 @@ function buildResources(callback) {
                 })
         })
         .then(function (next) {
-            var info = cpu.average()
+            var info = cpu.average();
             resObject.cpu_average = info;
+            next();
+        })
+        .then(function(next) {
+        	var count = 1;
+        	var avgSpeed = 0;
+        	var maxSpeed = 0;
+        	var dict = {};
+	       	for (let i = 0; i < os1.cpus().length; i++){
+	        		var fileName = "/sys/devices/system/cpu/cpufreq/policy" + i  + "/scaling_cur_freq";
+		        	var data = fs.readFileSync(fileName, 'utf8');
+	        	    if(data !== undefined) {
+	        	    	var val = Math.round(parseInt(data.replace(/\D/g,'')) / 1000);
+						avgSpeed += val;
+						dict[i+1] = val;
+						if (val > maxSpeed)
+							maxSpeed = val;
+	        		};
+            };
+//            resObject.avgSpeed2 = Math.round(total / os1.cpus().length);
+//        	os1.cpus().forEach((elem) => {
+//        		dict[count] = elem.speed;
+//        		arr.push(elem.speed);
+//        		avgSpeed += elem.speed;
+//        		count ++;
+//        		if(elem.speed > maxSpeed)
+//        			maxSpeed = elem.speed;
+//        	});
+        	resObject.cpusSpeeds = dict;
+            resObject.avgSpeed = Math.round(avgSpeed / os1.cpus().length);
+            resObject.maxSpeed = maxSpeed;
             next();
         })
         .then(function (next) {
