@@ -8,7 +8,7 @@ var express = require("express");
 var Sequence = exports.Sequence || require('sequence').Sequence, sequence = Sequence.create(), err;
 var app = express();
 
-var LISTEN_PORT = process.env.LISTEN_PORT || 7778;
+var LISTEN_PORT = process.env.LISTEN_PORT || 7777;
 var THERMAL_ZONE = process.env.THERMAL_ZONE || "/sys/class/thermal/thermal_zone0/temp";
 
 console.log("THERMAL_ZONE: " + THERMAL_ZONE);
