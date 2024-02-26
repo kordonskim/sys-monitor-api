@@ -4,14 +4,19 @@ const removeTrailingSpaces = require("remove-trailing-spaces");
 var osu = require('node-os-utils');
 var os1 = require('os');
 var fs = require('fs');
-var express = require("express");
+var glob = require('glob').sync;
+var express = require('express');
 var Sequence = exports.Sequence || require('sequence').Sequence, sequence = Sequence.create(), err;
 var app = express();
 
 var LISTEN_PORT = process.env.LISTEN_PORT || 7777;
 var THERMAL_ZONE = process.env.THERMAL_ZONE || "/sys/class/thermal/thermal_zone0/temp";
+var CPUSPEEDPOLICY = process.env.CPUSPEEDPOLICY || true;
+var CPUSPEEDNODEOS = process.env.CPUSPEEDNODEOS || true;
 
 console.log("THERMAL_ZONE: " + THERMAL_ZONE);
+console.log("CPUSPEEDPOLICY: " + CPUSPEEDPOLICY);
+console.log("CPUSPEEDNODEOS: " + CPUSPEEDNODEOS);
 
 app.listen(LISTEN_PORT, () => {
     console.log("Server running on port " + LISTEN_PORT);
@@ -35,7 +40,6 @@ function buildResources(callback) {
     var mem = osu.mem;
     var netstat = osu.netstat;
     var os = osu.os;
-    
     var resObject = {};
     
     sequence
@@ -90,33 +94,48 @@ function buildResources(callback) {
             next();
         })
         .then(function(next) {
-        	var count = 1;
-        	var avgSpeed = 0;
-        	var maxSpeed = 0;
-        	var dict = {};
-	       	for (let i = 0; i < os1.cpus().length; i++){
+        	var cpu_avg_speed_policy = 0;
+        	var cpu_avg_speed_nodeos = 0;
+        	var cpu_max_speed_policy = 0;
+        	var cpu_max_speed_nodeos = 0;
+        	var cpu_speeds_policy = {};
+        	var cpu_speeds_nodeos = {};
+
+			if (CPUSPEEDPOLICY){
+				// base count on file count insetad os1.cpus().length
+				var files = glob("/sys/devices/system/cpu/cpufreq/policy*");
+				
+				var cpu_count = files.length;
+		       	for (let i = 0; i < cpu_count; i++){
 	        		var fileName = "/sys/devices/system/cpu/cpufreq/policy" + i  + "/scaling_cur_freq";
 		        	var data = fs.readFileSync(fileName, 'utf8');
 	        	    if(data !== undefined) {
 	        	    	var val = Math.round(parseInt(data.replace(/\D/g,'')) / 1000);
-						avgSpeed += val;
-						dict[i+1] = val;
-						if (val > maxSpeed)
-							maxSpeed = val;
+						cpu_avg_speed_policy += val;
+						cpu_speeds_policy[i+1] = val;
+						if (val > cpu_max_speed_policy)
+							cpu_max_speed_policy = val;
 	        		};
-            };
-//            resObject.avgSpeed2 = Math.round(total / os1.cpus().length);
-//        	os1.cpus().forEach((elem) => {
-//        		dict[count] = elem.speed;
-//        		arr.push(elem.speed);
-//        		avgSpeed += elem.speed;
-//        		count ++;
-//        		if(elem.speed > maxSpeed)
-//        			maxSpeed = elem.speed;
-//        	});
-        	resObject.cpusSpeeds = dict;
-            resObject.avgSpeed = Math.round(avgSpeed / os1.cpus().length);
-            resObject.maxSpeed = maxSpeed;
+    	        };
+	        	resObject.cpu_speeds_policy = cpu_speeds_policy;
+	            resObject.cpu_avg_speed_policy = Math.round(cpu_avg_speed_policy / cpu_count);
+	            resObject.cpu_max_speed_policy = cpu_max_speed_policy;
+    	        
+			}
+
+            if (CPUSPEEDNODEOS){
+            	var count = 1;
+	        	os1.cpus().forEach((elem) => {
+	        		cpu_speeds_nodeos[count] = elem.speed;
+	        		cpu_avg_speed_nodeos += elem.speed;
+	        		count ++;
+	        		if(elem.speed > cpu_max_speed_nodeos)
+	        			cpu_max_speed_nodeos = elem.speed;
+        		});
+	        	resObject.cpu_speeds_nodeos = cpu_speeds_nodeos;
+	            resObject.cpu_avg_speed_nodeos = Math.round(cpu_avg_speed_nodeos / os1.cpus().length);
+	            resObject.cpu_max_speed_nodeos = cpu_max_speed_nodeos;
+            }
             next();
         })
         .then(function (next) {
